@@ -1,6 +1,5 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import clsx from 'clsx';
 import { Player } from './bots/types';
 import { getBotStrategy } from './bots/botFactory';
 import gameSocket from '../../lib/socket';
@@ -320,101 +319,97 @@ export default function TicTacToe() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
+    <div className="bg-background text-foreground h-screen shadow-md transition-colors duration-200 flex flex-col items-center justify-center p-4">
       <h1 className="text-2xl font-bold mb-4">
         Level {Math.floor(gridSize/3)} (Grid: {gridSize}x{gridSize}, Win: {winStreak})
       </h1>
-      <div className="flex gap-4 mb-4">
+      <div className="mb-4 flex gap-4">
         <button
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
           onClick={handleBotToggle}
+          className={`btn ${isBotEnabled ? 'btn-primary' : 'btn-secondary'}`}
           disabled={isMultiplayer}
         >
           {isBotEnabled ? 'Disable Bot' : 'Enable Bot'}
         </button>
         <button
-          className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
           onClick={handleMultiplayerToggle}
+          className={`btn ${isMultiplayer ? 'btn-primary' : 'btn-secondary'}`}
           disabled={isBotEnabled}
         >
           {isMultiplayer ? 'Leave Game' : 'Find Game'}
         </button>
         {winner && (
           <button
-            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+            className="btn btn-primary"
             onClick={handleReset}
           >
             New Game
           </button>
         )}
       </div>
+
       {errorMessage && (
-        <div className="mb-4 text-lg font-semibold text-red-600">
+        <div className="mb-4 p-2 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-100 rounded-md">
           {errorMessage}
         </div>
       )}
+
       {isWaiting && (
-        <div className="mb-4 text-lg font-semibold text-purple-600 animate-pulse">
+        <div className="mb-4 p-2 bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-100 rounded-md">
           Waiting for opponent...
         </div>
       )}
-      {isMultiplayer && !isWaiting && (
-        <div className="text-xl font-bold mb-4">
-          {winner ? (
-            <div className="text-green-500">Winner: {winner}</div>
-          ) : (
-            <div className={isMyTurn() ? 'text-blue-500' : 'text-red-500'}>
-              {isMyTurn() ? 'Your turn' : 'Opponent\'s turn'}
-              <div className="text-sm text-gray-600">
-                (You are {gameSocket.getGameState().playerSymbol} - ID: {gameSocket.getGameState().socketId?.slice(0, 6)})
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-      {isBotThinking && !isMultiplayer ? (
-        <div className="mb-4 text-lg font-semibold text-blue-600 animate-pulse">
-          Bot's turn
-        </div>
-      ) : !isMultiplayer && !isBotEnabled && (
-        <div className="mb-4 text-lg font-semibold text-blue-600">
-          Your turn
-        </div>
-      )}
-      {winner && (
-        <div className="mt-4 text-lg font-semibold">
-          {winner === 'Draw' ? "It's a draw!" : `Winner: ${winner}`}
-        </div>
-      )}
-      <div 
-        className="grid gap-1" 
-        style={{ 
-          display: 'grid',
+
+      <div className="mb-4">
+        {winner ? (
+          <div className="text-2xl font-bold">
+            {winner === 'Draw' ? "It's a Draw!" : `Player ${winner} Wins!`}
+          </div>
+        ) : (
+          <div className="text-xl">
+            {isMultiplayer
+              ? isMyTurn()
+                ? "Your Turn"
+                : "Opponent's Turn"
+              : `Current Player: ${currentPlayer}`}
+          </div>
+        )}
+      </div>
+
+      <div
+        className="grid gap-1 bg-gray-100 dark:bg-gray-700 p-4 rounded-lg max-w-[300px] max-h-[300px] w-full h-full"
+        style={{
           gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
-          gap: '4px',
-          padding: '4px',
-          backgroundColor: '#f3f4f6',
-          borderRadius: '8px'
         }}
       >
-        {board.map((row, i) =>
-          row.map((cell, j) => (
+        {board.map((row, rowIndex) =>
+          row.map((cell, colIndex) => (
             <button
-              key={`${i}-${j}`}
-              className={`w-16 h-16 border-2 border-gray-300 text-2xl font-bold ${
-                board[i][j] ? 'cursor-not-allowed' : 'hover:bg-gray-100'
-              } ${!isMyTurn() ? 'cursor-not-allowed opacity-50' : ''}`}
-              onClick={() => handleCellClick(i, j)}
-              disabled={board[i][j] !== null || winner !== null || !isMyTurn()}
-              style={{
-                aspectRatio: '1',
-                backgroundColor: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
+              key={`${rowIndex}-${colIndex}`}
+              onClick={() => handleCellClick(rowIndex, colIndex)}
+              className={`aspect-square w-full h-full flex items-center justify-center text-2xl font-bold border-2 rounded-md transition-colors duration-200
+                ${
+                  cell
+                    ? cell === 'X'
+                      ? 'text-blue-500 dark:text-blue-400'
+                      : 'text-red-500 dark:text-red-400'
+                    : 'text-gray-400 dark:text-gray-500'
+                }
+                ${
+                  winner
+                    ? 'border-gray-300 dark:border-gray-600'
+                    : 'border-gray-400 dark:border-gray-500 hover:border-gray-500 dark:hover:border-gray-400'
+                }
+                ${
+                  isBotThinking || (isMultiplayer && !isMyTurn())
+                    ? 'cursor-not-allowed'
+                    : 'cursor-pointer'
+                }
+                bg-white dark:bg-gray-800
+              `}
+              disabled={isBotThinking || (isMultiplayer && !isMyTurn())}
             >
-              {board[i][j]}
+              {cell}
             </button>
           ))
         )}
