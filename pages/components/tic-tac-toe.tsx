@@ -1,14 +1,17 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import clsx from 'clsx';
-import { Player } from './bots/types';
+import { Player } from './game/types';
 import { getBotStrategy } from './bots/botFactory';
 import gameSocket from '../../lib/socket';
-
-const generateEmptyGrid = (size: number): Player[][] =>
-  Array.from({ length: size }, () => Array(size).fill(null));
+import { generateEmptyGrid, calculateWinStreak, checkWinner } from './game/utils';
+import { GameBoard } from './game/GameBoard';
+import { GameControls } from './game/GameControls';
+import { GameStatus } from './game/GameStatus';
+import { StartMenu, GameMode } from './game/StartMenu';
+import { Lobby } from './game/Lobby';
 
 export default function TicTacToe() {
+  const [gameMode, setGameMode] = useState<GameMode | null>(null);
   const [gridSize, setGridSize] = useState(3);
   const [winStreak, setWinStreak] = useState(3);
   const currentWinStreakRef = useRef(3);
@@ -22,14 +25,7 @@ export default function TicTacToe() {
   const [isMultiplayer, setIsMultiplayer] = useState(false);
   const [isWaiting, setIsWaiting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // Calculate win streak based on grid size
-  const calculateWinStreak = (size: number): number => {
-    if (size <= 5) return 3;
-    if (size <= 7) return 5;
-    if (size <= 9) return 6;
-    return Math.ceil(size / 2);
-  };
+  const [showLobby, setShowLobby] = useState(false);
 
   // Update refs when state changes
   useEffect(() => {
@@ -40,9 +36,16 @@ export default function TicTacToe() {
 
   // Set up socket event handlers
   useEffect(() => {
+    if (!isMultiplayer) return;
+
+    gameSocket.setOnConnectionEstablished(() => {
+      console.log('[Game] Connection established');
+    });
+
     gameSocket.setOnGameFound((data) => {
       setIsWaiting(false);
       setIsMultiplayer(true);
+      setShowLobby(false);
       // Reset game state for new multiplayer game
       setGridSize(3);
       currentGridSizeRef.current = 3;
@@ -109,7 +112,43 @@ export default function TicTacToe() {
       console.log('[Game] Cleaning up socket connection');
       gameSocket.disconnect();
     };
-  }, []);
+  }, [isMultiplayer]);
+
+  const handleGameModeSelect = (mode: GameMode) => {
+    setGameMode(mode);
+    setBoard(generateEmptyGrid(3));
+    setWinner(null);
+    setGameCount(prev => prev + 1);
+    setCurrentPlayer(gameCount % 2 === 0 ? 'X' : 'O');
+    setErrorMessage(null);
+
+    switch (mode) {
+      case 'bot':
+        setIsBotEnabled(true);
+        setIsMultiplayer(false);
+        break;
+      case 'single':
+        setIsBotEnabled(false);
+        setIsMultiplayer(false);
+        break;
+      case 'multiplayer':
+        setIsBotEnabled(false);
+        setIsMultiplayer(true);
+        setShowLobby(true);
+        break;
+    }
+  };
+
+  const handleLobbyStart = () => {
+    gameSocket.findGame();
+  };
+
+  const handleLobbyCancel = () => {
+    setShowLobby(false);
+    setIsMultiplayer(false);
+    gameSocket.disconnect();
+    setGameMode(null);
+  };
 
   const handleCellClick = (row: number, col: number) => {
     if (board[row][col] || winner || isBotThinking) {
@@ -164,90 +203,6 @@ export default function TicTacToe() {
     }
   };
 
-  const checkWinner = (grid: Player[][], r: number, c: number, player: Player, currentWinStreak: number, currentGridSize: number) => {
-    console.log('[Game] Checking winner:', {
-      position: [r, c],
-      player,
-      currentWinStreak,
-      currentGridSize
-    });
-
-    const directions = [
-      [0, 1], [1, 0], [1, 1], [1, -1],
-    ];
-
-    for (const [dr, dc] of directions) {
-      let count = 1;  // Start with 1 for the current cell
-      let streak = [[r, c]];  // Initialize streak with current position
-      console.log('[Game] direction:', [dr, dc]);
-
-      // Check forward direction
-      for (let i = 1; i < currentWinStreak; i++) {
-        const nr = r + dr * i;
-        const nc = c + dc * i;
-        console.log('[Game] Checking forward:', {
-          i,
-          nr,
-          nc,
-          value: grid[nr]?.[nc],
-          expected: player,
-          inBounds: nr >= 0 && nr < currentGridSize && nc >= 0 && nc < currentGridSize,
-          gridSize: currentGridSize
-        });
-        if (nr >= 0 && nr < currentGridSize && nc >= 0 && nc < currentGridSize && grid[nr][nc] === player) {
-          count++;
-          console.log('[Game] match found increasing count', count);
-          streak.push([nr, nc]);
-        } else {
-          break;
-        }
-      }
-
-      // Check backward direction
-      for (let i = 1; i < currentWinStreak; i++) {
-        const nr = r - dr * i;
-        const nc = c - dc * i;
-        console.log('[Game] Checking backward:', {
-          i,
-          nr,
-          nc,
-          value: grid[nr]?.[nc],
-          expected: player,
-          inBounds: nr >= 0 && nr < currentGridSize && nc >= 0 && nc < currentGridSize,
-          gridSize: currentGridSize
-        });
-        if (nr >= 0 && nr < currentGridSize && nc >= 0 && nc < currentGridSize && grid[nr][nc] === player) {
-          count++;
-          console.log('[Game] match found increasing count', count);
-          streak.push([nr, nc]);
-        } else {
-          break;
-        }
-      }
-
-      console.log('[Game] Direction check:', {
-        direction: [dr, dc],
-        count,
-        currentWinStreak,
-        streak,
-        grid: grid.map(row => row.map(cell => cell || ' '))
-      });
-
-      if (count >= currentWinStreak) {
-        console.log('[Game] Winner found:', {
-          player,
-          count,
-          currentWinStreak,
-          direction: [dr, dc],
-          streak
-        });
-        return true;
-      }
-    }
-
-    return false;
-  };
-
   const makeBotMove = () => {
     if (!isBotEnabled || currentPlayer !== 'O' || winner) return;
 
@@ -262,31 +217,8 @@ export default function TicTacToe() {
     }, 500);
   };
 
-  const handleBotToggle = () => {
-    if (!isBotEnabled) {
-      // Reset the game state
-      setBoard(generateEmptyGrid(gridSize));
-      setWinner(null);
-      // Increment game count and set first player based on even/odd
-      setGameCount(prev => prev + 1);
-      setCurrentPlayer(gameCount % 2 === 0 ? 'X' : 'O');
-    }
-    setIsBotEnabled(!isBotEnabled);
-    setIsMultiplayer(false);
-    setErrorMessage(null);
-  };
-
-  const handleMultiplayerToggle = () => {
-    if (!isMultiplayer) {
-      gameSocket.findGame();
-    } else {
-      setIsMultiplayer(false);
-      gameSocket.resetGameState();
-    }
-    setErrorMessage(null);
-  };
-
   const handleReset = () => {
+    setGameMode(null);
     setGridSize(3);
     setWinStreak(calculateWinStreak(3));
     setBoard(generateEmptyGrid(3));
@@ -319,106 +251,47 @@ export default function TicTacToe() {
     return gameState.currentPlayer === gameState.playerSymbol;
   };
 
+  if (!gameMode) {
+    return (
+      <div className="bg-background text-foreground h-screen shadow-md transition-colors duration-200 flex flex-col items-center justify-center p-4">
+        <StartMenu onGameModeSelect={handleGameModeSelect} />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-      <h1 className="text-2xl font-bold mb-4">
-        Level {Math.floor(gridSize/3)} (Grid: {gridSize}x{gridSize}, Win: {winStreak})
-      </h1>
-      <div className="flex gap-4 mb-4">
-        <button
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-          onClick={handleBotToggle}
-          disabled={isMultiplayer}
-        >
-          {isBotEnabled ? 'Disable Bot' : 'Enable Bot'}
-        </button>
-        <button
-          className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
-          onClick={handleMultiplayerToggle}
-          disabled={isBotEnabled}
-        >
-          {isMultiplayer ? 'Leave Game' : 'Find Game'}
-        </button>
-        {winner && (
-          <button
-            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
-            onClick={handleReset}
-          >
-            New Game
-          </button>
-        )}
-      </div>
-      {errorMessage && (
-        <div className="mb-4 text-lg font-semibold text-red-600">
-          {errorMessage}
-        </div>
+    <div className="bg-background text-foreground h-screen shadow-md transition-colors duration-200 flex flex-col items-center justify-center p-4">
+      {showLobby && (
+        <Lobby
+          onGameStart={handleLobbyStart}
+          onCancel={handleLobbyCancel}
+        />
       )}
-      {isWaiting && (
-        <div className="mb-4 text-lg font-semibold text-purple-600 animate-pulse">
-          Waiting for opponent...
-        </div>
-      )}
-      {isMultiplayer && !isWaiting && (
-        <div className="text-xl font-bold mb-4">
-          {winner ? (
-            <div className="text-green-500">Winner: {winner}</div>
-          ) : (
-            <div className={isMyTurn() ? 'text-blue-500' : 'text-red-500'}>
-              {isMyTurn() ? 'Your turn' : 'Opponent\'s turn'}
-              <div className="text-sm text-gray-600">
-                (You are {gameSocket.getGameState().playerSymbol} - ID: {gameSocket.getGameState().socketId?.slice(0, 6)})
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-      {isBotThinking && !isMultiplayer ? (
-        <div className="mb-4 text-lg font-semibold text-blue-600 animate-pulse">
-          Bot's turn
-        </div>
-      ) : !isMultiplayer && !isBotEnabled && (
-        <div className="mb-4 text-lg font-semibold text-blue-600">
-          Your turn
-        </div>
-      )}
-      {winner && (
-        <div className="mt-4 text-lg font-semibold">
-          {winner === 'Draw' ? "It's a draw!" : `Winner: ${winner}`}
-        </div>
-      )}
-      <div 
-        className="grid gap-1" 
-        style={{ 
-          display: 'grid',
-          gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
-          gap: '4px',
-          padding: '4px',
-          backgroundColor: '#f3f4f6',
-          borderRadius: '8px'
-        }}
-      >
-        {board.map((row, i) =>
-          row.map((cell, j) => (
-            <button
-              key={`${i}-${j}`}
-              className={`w-16 h-16 border-2 border-gray-300 text-2xl font-bold ${
-                board[i][j] ? 'cursor-not-allowed' : 'hover:bg-gray-100'
-              } ${!isMyTurn() ? 'cursor-not-allowed opacity-50' : ''}`}
-              onClick={() => handleCellClick(i, j)}
-              disabled={board[i][j] !== null || winner !== null || !isMyTurn()}
-              style={{
-                aspectRatio: '1',
-                backgroundColor: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              {board[i][j]}
-            </button>
-          ))
-        )}
-      </div>
+
+      <GameStatus
+        gridSize={gridSize}
+        winStreak={winStreak}
+        winner={winner}
+        currentPlayer={currentPlayer}
+        isMultiplayer={isMultiplayer}
+        isMyTurn={isMyTurn()}
+        isWaiting={isWaiting}
+        errorMessage={errorMessage}
+      />
+
+      <GameControls
+        onReset={handleReset}
+      />
+
+      <GameBoard
+        board={board}
+        gridSize={gridSize}
+        winner={winner}
+        isBotThinking={isBotThinking}
+        isMultiplayer={isMultiplayer}
+        isMyTurn={isMyTurn()}
+        onCellClick={handleCellClick}
+      />
     </div>
   );
 }
