@@ -41,35 +41,46 @@ class GameSocket {
   private onWaitingCallback: (() => void) | null = null;
   private onOpponentDisconnectedCallback: (() => void) | null = null;
   private onMoveMadeCallback: ((data: {
-    // Common fields for both mover and opponent
     currentPlayer: Player,
     isBoardFull?: boolean,
     newGridSize?: number,
     isWinner: boolean,
     winner?: Player,
-    // Fields only for opponent data
     row?: number,
     col?: number,
     player?: Player,
     playerId?: string
   }) => void) | null = null;
   private onErrorCallback: ((message: string) => void) | null = null;
+  private onConnectionEstablishedCallback: (() => void) | null = null;
 
   // Add this new method to track the last move
   private lastMove: { row: number, col: number, player: Player } | null = null;
 
   constructor() {
-    // Initialize socket connection
+    // Don't initialize socket connection here
+  }
+
+  // Initialize socket connection
+  initialize() {
+    if (this.socket) {
+      console.log('[Socket] Connection already exists');
+      return;
+    }
+
+    console.log('[Socket] Initializing connection');
     this.socket = io({
       path: '/api/socket',
     });
 
-    // Set up socket event listeners
     this.socket.on('connect', () => {
       console.log('[Socket] Connected to server');
       if (this.socket?.id) {
         this.gameState.socketId = this.socket.id;
         console.log('[Socket] Socket ID assigned:', this.socket.id);
+        if (this.onConnectionEstablishedCallback) {
+          this.onConnectionEstablishedCallback();
+        }
       }
     });
 
@@ -188,6 +199,10 @@ class GameSocket {
   // Method to find a game
   findGame() {
     console.log('[Socket] Finding game...');
+    if (!this.socket) {
+      console.log('[Socket] No connection, initializing...');
+      this.initialize();
+    }
     if (this.socket) {
       this.socket.emit('findGame');
     }
@@ -294,13 +309,11 @@ class GameSocket {
   }
 
   setOnMoveMade(callback: (data: {
-    // Common fields for both mover and opponent
     currentPlayer: Player,
     isBoardFull?: boolean,
     newGridSize?: number,
     isWinner: boolean,
     winner?: Player,
-    // Fields only for opponent data
     row?: number,
     col?: number,
     player?: Player,
@@ -313,6 +326,11 @@ class GameSocket {
     this.onErrorCallback = callback;
   }
 
+  // Add new method for connection callback
+  setOnConnectionEstablished(callback: () => void) {
+    this.onConnectionEstablishedCallback = callback;
+  }
+
   // Getter for game state
   getGameState(): GameState {
     return { ...this.gameState };
@@ -323,6 +341,7 @@ class GameSocket {
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
+      this.resetGameState();
     }
   }
 }

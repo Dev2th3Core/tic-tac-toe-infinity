@@ -1,4 +1,4 @@
-export type Player = 'X' | 'O' | null;
+export type Player = 'X' | 'O';
 
 export type BotLevel = 'expert';
 
