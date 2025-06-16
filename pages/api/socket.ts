@@ -70,7 +70,7 @@ const generateMoveData = (
   const commonData = {
     currentPlayer: game.getCurrentPlayer(),
     isBoardFull: game.isBoardFull(),
-    newGridSize: game.isBoardFull() ? game.getGridSize() : undefined,
+    newGridSize: game.getGridSize(),
     isWinner,
     winner: isWinner ? currentPlayer.symbol : undefined
   };
@@ -158,15 +158,17 @@ const handleRegularMove = (
   currentPlayer: { id: string, symbol: Player },
   requestId: string
 ) => {
+  // Generate move data for both players
+  const moverData = generateMoveData(game, currentPlayer, data, true);
+  const opponentData = generateMoveData(game, currentPlayer, data, false);
+  
   const wasBoardFull = game.isBoardFull();
   if (wasBoardFull) {
     logger.info('Board is full, expanding grid', { gameId: data.gameId, requestId });
     game.expandBoard();
+    moverData.newGridSize = game.getGridSize();
+    opponentData.newGridSize = game.getGridSize();
   }
-
-  // Generate move data for both players
-  const moverData = generateMoveData(game, currentPlayer, data, true);
-  const opponentData = generateMoveData(game, currentPlayer, data, false);
 
   // Send appropriate data to each player
   const opponent = game.getOpponent(currentPlayer.id);
