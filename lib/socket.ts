@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { Player } from '../pages/components/bots/types';
+import { Player } from '@/app/components/bots/types';
 
 // Game state interface
 interface GameState {

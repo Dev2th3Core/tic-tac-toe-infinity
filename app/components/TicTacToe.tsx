@@ -253,14 +253,14 @@ export default function TicTacToe() {
 
   if (!gameMode) {
     return (
-      <div className="bg-background text-foreground h-screen shadow-md transition-colors duration-200 flex flex-col items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-800 text-foreground transition-colors duration-200 flex flex-col items-center justify-center p-4">
         <StartMenu onGameModeSelect={handleGameModeSelect} />
       </div>
     );
   }
 
   return (
-    <div className="bg-background text-foreground h-screen shadow-md transition-colors duration-200 flex flex-col items-center justify-center p-4">
+    <div className="bg-background text-foreground h-screen transition-colors duration-200 flex flex-col items-center justify-center p-4">
       {showLobby && (
         <Lobby
           onGameStart={handleLobbyStart}

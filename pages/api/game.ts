@@ -1,4 +1,4 @@
-import { Player } from '../components/bots/types';
+import { Player } from '../../app/components/bots/types';
 import { Logger, ErrorHandler } from './errors';
 
 export class Game {

@@ -18,7 +18,7 @@ const Navbar = () => {
   if (!mounted) return null;
 
   return (
-    <nav className="bg-background text-foreground absolute mt-4 border-2 container left-1/2 transform -translate-x-1/2 rounded-4xl shadow-2xl transition-colors duration-200">
+    <nav className="bg-white dark:bg-gray-800 text-gray-800 dark:text-white shadow-custom mx-auto mb-1 container w-[90%] rounded-full shadow-2xl transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-12  ">
           {/* Logo and Name */}
@@ -43,7 +43,7 @@ const Navbar = () => {
           <div className="flex items-center">
             <button
               onClick={toggleTheme}
-              className="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 p-2 rounded-4xl transition-colors duration-200"
+              className="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 p-2 rounded-full transition-colors duration-200"
               aria-label="Toggle theme"
             >
               {theme === 'dark' ? (

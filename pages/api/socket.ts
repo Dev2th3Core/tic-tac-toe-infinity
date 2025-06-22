@@ -1,7 +1,7 @@
 import { Server as NetServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { NextApiRequest, NextApiResponse } from 'next';
-import { Player } from '../components/bots/types';
+import { Player } from '../../app/components/bots/types';
 import { Game } from './game';
 import { Logger, ErrorHandler, PlayerError } from './errors';
 
@@ -19,7 +19,7 @@ type ResponseWithSocket = NextApiResponse & {
 
 // In-memory storage for game state
 const waitingPlayers: string[] = [];
-const activeGames: Map<string, Game> = new Map();
+const activeGames: Map<string, InstanceType<typeof Game>> = new Map();
 
 // Rate limiting
 const RATE_LIMIT_WINDOW = 1000; // 1 second
@@ -61,7 +61,7 @@ const checkRateLimit = (playerId: string): boolean => {
 
 // Helper function to generate move data
 const generateMoveData = (
-  game: Game,
+  game: InstanceType<typeof Game>,
   currentPlayer: { id: string, symbol: Player },
   data: any,
   isMover: boolean,
@@ -105,31 +105,29 @@ const createGame = (io: SocketIOServer, opponentId: string, socketId: string, re
   logger.info('Game created and added to active games', { gameId, requestId });
 
   // Notify first player (opponent)
-  const firstPlayerData = { 
+  io.to(opponentId).emit('gameFound', { 
     gameId, 
     opponent: socketId,
     isFirstPlayer: true,
     currentPlayer: firstPlayer,
     playerSymbol: firstPlayer
-  };
-  io.to(opponentId).emit('gameFound', firstPlayerData);
+  });
 
   // Notify second player (current socket)
-  const secondPlayerData = { 
+  io.to(socketId).emit('gameFound', { 
     gameId, 
     opponent: opponentId,
     isFirstPlayer: false,
     currentPlayer: firstPlayer,
     playerSymbol: secondPlayer
-  };
-  io.to(socketId).emit('gameFound', secondPlayerData);
+  });
   logger.info('Game found notifications sent', { gameId, requestId });
 };
 
 // Handle winning move
 const handleWinningMove = (
   io: SocketIOServer,
-  game: Game,
+  game: InstanceType<typeof Game>,
   data: any,
   currentPlayer: { id: string, symbol: Player },
   requestId: string
@@ -153,7 +151,7 @@ const handleWinningMove = (
 // Handle regular move
 const handleRegularMove = (
   io: SocketIOServer,
-  game: Game,
+  game: InstanceType<typeof Game>,
   data: any,
   currentPlayer: { id: string, symbol: Player },
   requestId: string
@@ -208,8 +206,8 @@ const handleDisconnection = (io: SocketIOServer, socketId: string) => {
 };
 
 export default function handler(req: NextApiRequest, res: ResponseWithSocket) {
-  if (!res.socket.server.io) {
-    const httpServer: NetServer = res.socket.server;
+  if (!(res.socket.server as any).io) {
+    const httpServer: NetServer = res.socket.server as any;
     const io = new SocketIOServer(httpServer, {
       path: '/api/socket',
       addTrailingSlash: false,
@@ -262,10 +260,8 @@ export default function handler(req: NextApiRequest, res: ResponseWithSocket) {
           errorHandler.validateGameState(game, data.gameId);
 
           // Get current player's symbol
-          const currentPlayer = game!.getPlayerBySymbol(game!.getCurrentPlayer());
-          if (!currentPlayer || currentPlayer.id !== socket.id) {
-            throw new PlayerError(`Not player's turn: ${socket.id}`);
-          }
+          const currentPlayer = game!.getPlayers().find(p => p.id === socket.id);
+          if (!currentPlayer) throw new PlayerError('Player not found in game');
 
           // Make the move
           const moveSuccess = game!.makeMove(data.row, data.col, currentPlayer.symbol);
@@ -290,7 +286,7 @@ export default function handler(req: NextApiRequest, res: ResponseWithSocket) {
       socket.on('disconnect', () => handleDisconnection(io, socket.id));
     });
 
-    res.socket.server.io = io;
+    (res.socket.server as any).io = io;
   }
   res.end();
 } 
