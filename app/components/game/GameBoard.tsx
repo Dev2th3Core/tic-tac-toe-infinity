@@ -34,7 +34,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
   return (
     <div
-      className="grid gap-1 bg-gray-100 dark:bg-gray-700 p-2 rounded-lg max-w-[400px] max-h-[400px] w-full h-full"
+      className="grid gap-1 bg-gray-100 dark:bg-gray-700 p-2 rounded-xl max-w-[400px] max-h-[400px] w-full"
       style={{
         gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
       }}
@@ -44,7 +44,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           <button
             key={`${rowIndex}-${colIndex}`}
             onClick={() => onCellClick(rowIndex, colIndex)}
-            className={`aspect-square w-full h-full flex items-center justify-center font-bold border-2 rounded-md transition-colors duration-200
+            className={`aspect-square w-full h-full flex items-center justify-center font-bold border-2 rounded-xl transition-colors duration-200
               ${getTextSize()}
               ${
                 cell

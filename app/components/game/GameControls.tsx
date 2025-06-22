@@ -11,7 +11,7 @@ export const GameControls: React.FC<GameControlsProps> = ({
     <div className="mb-4 flex gap-4">
       <button
         onClick={onReset}
-        className="btn btn-primary"
+        className="btn btn-primary rounded-xl"
       >
         New Game
       </button>

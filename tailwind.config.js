@@ -5,7 +5,7 @@ module.exports = {
       './components/**/*.{js,ts,jsx,tsx}',
       './pages/**/*.{js,ts,jsx,tsx}', // include this if using pages/
     ],
-    darkMode: 'class',
+    darkMode: ['class'],
     theme: {
       extend: {
         colors: {
@@ -57,9 +57,6 @@ module.exports = {
         }
       }
     },
-    plugins: {
-      tailwindcss: {},
-      autoprefixer: {},
-    },
+    plugins: [],
   };
   
