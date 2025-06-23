@@ -1,5 +1,5 @@
 import { Player } from '../../app/components/bots/types';
-import { Logger, ErrorHandler } from './errors';
+import { Logger, ErrorHandler, GameStateError } from './errors';
 
 export class Game {
   private players: { id: string, symbol: Player }[];
@@ -169,5 +169,27 @@ export class Game {
       this.logger.warn('Opponent not found', { playerId });
     }
     return opponent;
+  }
+
+  getState(): object {
+    return {
+      players: this.players,
+      board: this.board,
+      currentPlayer: this.currentPlayer,
+      gridSize: this.gridSize,
+      winStreak: this.winStreak,
+      filledCells: this.filledCells,
+    };
+  }
+
+  static fromState(state: any): Game {
+    if (!state || !state.players) {
+        throw new GameStateError('Invalid game state for deserialization');
+    }
+    const game = new Game(state.players, state.gridSize, state.winStreak);
+    game.board = state.board;
+    game.currentPlayer = state.currentPlayer;
+    game.filledCells = state.filledCells;
+    return game;
   }
 } 

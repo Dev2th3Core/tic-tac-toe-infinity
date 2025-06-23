@@ -3,7 +3,17 @@ import { Server as SocketIOServer } from 'socket.io';
 import { NextApiRequest, NextApiResponse } from 'next';
 import { Player } from '../../app/components/bots/types';
 import { Game } from './game';
-import { Logger, ErrorHandler, PlayerError } from './errors';
+import { Logger, ErrorHandler, PlayerError, GameStateError } from './errors';
+import { kv } from '@vercel/kv';
+
+interface GameState {
+  players: { id: string, symbol: Player }[];
+  board: Player[][];
+  currentPlayer: Player;
+  gridSize: number;
+  winStreak: number;
+  filledCells: number;
+}
 
 // Define the type for the server with Socket.IO
 type ServerWithSocketIO = NetServer & {
@@ -16,10 +26,6 @@ type ResponseWithSocket = NextApiResponse & {
     server: ServerWithSocketIO;
   };
 };
-
-// In-memory storage for game state
-const waitingPlayers: string[] = [];
-const activeGames: Map<string, InstanceType<typeof Game>> = new Map();
 
 // Rate limiting
 const RATE_LIMIT_WINDOW = 1000; // 1 second
@@ -89,7 +95,7 @@ const generateMoveData = (
 };
 
 // Game creation and player matching
-const createGame = (io: SocketIOServer, opponentId: string, socketId: string, requestId: string) => {
+const createGame = async (io: SocketIOServer, opponentId: string, socketId: string, requestId: string) => {
   const gameId = generateGameId(opponentId, socketId);
   logger.info('Creating new game', { gameId, players: [opponentId, socketId], requestId });
   
@@ -101,7 +107,9 @@ const createGame = (io: SocketIOServer, opponentId: string, socketId: string, re
     { id: socketId, symbol: secondPlayer }
   ]);
   
-  activeGames.set(gameId, game);
+  await kv.set(`game:${gameId}`, game.getState());
+  await kv.set(`player:${socketId}`, gameId);
+  await kv.set(`player:${opponentId}`, gameId);
   logger.info('Game created and added to active games', { gameId, requestId });
 
   // Notify first player (opponent)
@@ -125,7 +133,7 @@ const createGame = (io: SocketIOServer, opponentId: string, socketId: string, re
 };
 
 // Handle winning move
-const handleWinningMove = (
+const handleWinningMove = async (
   io: SocketIOServer,
   game: InstanceType<typeof Game>,
   data: any,
@@ -142,14 +150,16 @@ const handleWinningMove = (
   const opponent = game.getOpponent(currentPlayer.id);
   if (opponent) {
     io.to(opponent.id).emit('moveMade', opponentData);
+    await kv.del(`player:${opponent.id}`);
   }
   io.to(currentPlayer.id).emit('moveMade', moverData);
-
-  activeGames.delete(data.gameId);
+  await kv.del(`player:${currentPlayer.id}`);
+  
+  await kv.del(`game:${data.gameId}`);
 };
 
 // Handle regular move
-const handleRegularMove = (
+const handleRegularMove = async (
   io: SocketIOServer,
   game: InstanceType<typeof Game>,
   data: any,
@@ -168,6 +178,8 @@ const handleRegularMove = (
     opponentData.newGridSize = game.getGridSize();
   }
 
+  await kv.set(`game:${data.gameId}`, game.getState());
+
   // Send appropriate data to each player
   const opponent = game.getOpponent(currentPlayer.id);
   if (opponent) {
@@ -177,19 +189,16 @@ const handleRegularMove = (
 };
 
 // Handle player disconnection
-const handleDisconnection = (io: SocketIOServer, socketId: string) => {
+const handleDisconnection = async (io: SocketIOServer, socketId: string) => {
   logger.info('Client disconnected', { socketId });
   
-  // Remove from waiting list if present
-  const waitingIndex = waitingPlayers.indexOf(socketId);
-  if (waitingIndex !== -1) {
-    logger.info('Removing from waiting list', { socketId });
-    waitingPlayers.splice(waitingIndex, 1);
-  }
+  await kv.lrem('waiting_players', 1, socketId);
 
-  // Handle active games
-  activeGames.forEach((game, gameId) => {
-    if (game.getPlayers().some(p => p.id === socketId)) {
+  const gameId = await kv.get<string>(`player:${socketId}`);
+  if (gameId) {
+    const gameState = await kv.get<GameState>(`game:${gameId}`);
+    if (gameState) {
+      const game = Game.fromState(gameState);
       const opponent = game.getOpponent(socketId);
       if (opponent) {
         logger.info('Notifying opponent of disconnection', {
@@ -198,11 +207,13 @@ const handleDisconnection = (io: SocketIOServer, socketId: string) => {
           opponent: opponent.id
         });
         io.to(opponent.id).emit('opponentDisconnected');
+        await kv.del(`player:${opponent.id}`);
       }
       logger.info('Removing game', { gameId });
-      activeGames.delete(gameId);
+      await kv.del(`game:${gameId}`);
     }
-  });
+    await kv.del(`player:${socketId}`);
+  }
 };
 
 export default function handler(req: NextApiRequest, res: ResponseWithSocket) {
@@ -210,30 +221,30 @@ export default function handler(req: NextApiRequest, res: ResponseWithSocket) {
     const httpServer: NetServer = res.socket.server as any;
     const io = new SocketIOServer(httpServer, {
       path: '/api/socket',
-      addTrailingSlash: false,
     });
 
     io.on('connection', (socket) => {
       logger.info('Client connected', { socketId: socket.id });
 
       // Handle player looking for a game
-      socket.on('findGame', () => {
+      socket.on('findGame', async () => {
         const requestId = generateRequestId();
         try {
           logger.info('Player looking for game', { socketId: socket.id, requestId });
-          logger.debug('Current waiting players', { waitingPlayers, requestId });
-
-          if (waitingPlayers.length > 0) {
-            const opponentId = waitingPlayers.shift()!;
+          
+          const opponentId: string | null = await kv.lpop('waiting_players');
+          
+          if (opponentId && opponentId !== socket.id) {
             try {
-              createGame(io, opponentId, socket.id, requestId);
+              await createGame(io, opponentId, socket.id, requestId);
             } catch (error) {
               logger.error('Error creating game', error as Error, { gameId: generateGameId(opponentId, socket.id), requestId });
               socket.emit('error', 'Failed to create game');
+              await kv.lpush('waiting_players', opponentId); // requeue opponent
             }
           } else {
             logger.info('No opponent found, adding to waiting list', { socketId: socket.id, requestId });
-            waitingPlayers.push(socket.id);
+            await kv.rpush('waiting_players', socket.id);
             socket.emit('waitingForOpponent');
           }
         } catch (error) {
@@ -243,7 +254,7 @@ export default function handler(req: NextApiRequest, res: ResponseWithSocket) {
       });
 
       // Handle game moves
-      socket.on('makeMove', (data) => {
+      socket.on('makeMove', async (data) => {
         const requestId = generateRequestId();
         try {
           // Rate limiting check
@@ -255,9 +266,12 @@ export default function handler(req: NextApiRequest, res: ResponseWithSocket) {
 
           logger.info('Move received', { data, socketId: socket.id, requestId });
           
-          // Validate game exists
-          const game = activeGames.get(data.gameId);
-          errorHandler.validateGameState(game, data.gameId);
+          const gameState = await kv.get<GameState>(`game:${data.gameId}`);
+          if (!gameState) {
+            throw new GameStateError(`Game ${data.gameId} not found`);
+          }
+
+          const game = Game.fromState(gameState);
 
           // Get current player's symbol
           const currentPlayer = game!.getPlayers().find(p => p.id === socket.id);
@@ -272,9 +286,9 @@ export default function handler(req: NextApiRequest, res: ResponseWithSocket) {
 
           // Handle move based on whether it's a winning move
           if (data.isWinningMove === true) {
-            handleWinningMove(io, game!, data, currentPlayer, requestId);
+            await handleWinningMove(io, game!, data, currentPlayer, requestId);
           } else {
-            handleRegularMove(io, game!, data, currentPlayer, requestId);
+            await handleRegularMove(io, game!, data, currentPlayer, requestId);
           }
         } catch (error) {
           logger.error('Error processing move', error as Error, { data, socketId: socket.id, requestId });
