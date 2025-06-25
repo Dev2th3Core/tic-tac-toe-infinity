@@ -45,7 +45,7 @@ const StatusPopup: React.FC<{
         {(!autoDismiss && onClose) && (
           <button
             onClick={onClose}
-            className="mt-8 w-full py-3 px-4 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors duration-200 font-medium"
+            className="mt-8 w-full py-3 px-4 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors duration-200 font-medium"
           >
             Close
           </button>
@@ -75,6 +75,7 @@ interface GameStatusProps {
   isMyTurn: boolean;
   isWaiting: boolean;
   errorMessage: string | null;
+  playerSymbol: string | null
 }
 
 export const GameStatus: React.FC<GameStatusProps> = ({
@@ -86,6 +87,7 @@ export const GameStatus: React.FC<GameStatusProps> = ({
   isMyTurn,
   isWaiting,
   errorMessage,
+  playerSymbol
 }) => {
   const [showLevelPopup, setShowLevelPopup] = useState(false);
   const prevGridSize = useRef(gridSize);
@@ -103,7 +105,7 @@ export const GameStatus: React.FC<GameStatusProps> = ({
     if (gridSize !== prevGridSize.current) {
       setShowLevelPopup(true);
       prevGridSize.current = gridSize;
-      const timer = setTimeout(() => setShowLevelPopup(false), 1800);
+      const timer = setTimeout(() => setShowLevelPopup(false), 1000);
       return () => clearTimeout(timer);
     }
   }, [gridSize]);
@@ -130,14 +132,16 @@ export const GameStatus: React.FC<GameStatusProps> = ({
         });
       } else {
         setStatusModalProps({
-          type: isMultiplayer ? winner === 'X' ? 'win' : 'loss' : 'win',
-          title: isMultiplayer ? winner === 'X' ? 'Victory' : 'Defeat' : 'Victory',
+          type: isMultiplayer ? winner === playerSymbol ? 'win' : 'loss' : 'win',
+          title: isMultiplayer ? winner === playerSymbol ? 'Victory' : 'Defeat' : 'Victory',
           message: `Player ${winner} Wins!`,
         });
       }
       setShowStatusModal(true);
     }
   }, [winner]);
+
+  console.log("isMultiplayer: " + isMultiplayer);
 
   return (
     <>

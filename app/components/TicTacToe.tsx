@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Player } from './game/types';
 import { getBotStrategy } from './bots/botFactory';
 import gameSocket from '../../lib/socket';
-import { generateEmptyGrid, calculateWinStreak, checkWinner } from './game/utils';
+import { generateEmptyGrid, calculateWinStreak, checkWinner, getWinningLine } from './game/utils';
 import { GameBoard } from './game/GameBoard';
 import { GameControls } from './game/GameControls';
 import { GameStatus } from './game/GameStatus';
@@ -19,6 +19,7 @@ export default function TicTacToe() {
   const [board, setBoard] = useState(generateEmptyGrid(3));
   const [currentPlayer, setCurrentPlayer] = useState<Player>('X');
   const [winner, setWinner] = useState<Player | 'Draw' | null>(null);
+  const [winningLine, setWinningLine] = useState<[number, number][] | null>(null);
   const [isBotEnabled, setIsBotEnabled] = useState(false);
   const [isBotThinking, setIsBotThinking] = useState(false);
   const [gameCount, setGameCount] = useState(0);
@@ -54,6 +55,7 @@ export default function TicTacToe() {
       currentWinStreakRef.current = newWinStreak;
       setBoard(generateEmptyGrid(3));
       setWinner(null);
+      setWinningLine(null);
       // Set current player based on who goes first
       setCurrentPlayer(data.currentPlayer);
     });
@@ -93,11 +95,18 @@ export default function TicTacToe() {
       if (data.isWinner && data.winner) {
         console.log('[Game] Winner found in multiplayer:', data.winner);
         setWinner(data.winner);
+        // Get the winning line for the last move
+        if (data.row !== undefined && data.col !== undefined && data.player) {
+          const line = getWinningLine(gameState.board, data.row, data.col, data.player, currentWinStreakRef.current, currentGridSizeRef.current);
+          setWinningLine(line);
+        }
       } else if (data.row !== undefined && data.col !== undefined && data.player) {
         // Only check for winner if we have the move details (opponent data)
         if (checkWinner(gameState.board, data.row, data.col, data.player, currentWinStreakRef.current, currentGridSizeRef.current)) {
           console.log('[Game] Winner found in multiplayer:', data.player);
           setWinner(data.player);
+          const line = getWinningLine(gameState.board, data.row, data.col, data.player, currentWinStreakRef.current, currentGridSizeRef.current);
+          setWinningLine(line);
         }
       }
     });
@@ -118,6 +127,7 @@ export default function TicTacToe() {
     setGameMode(mode);
     setBoard(generateEmptyGrid(3));
     setWinner(null);
+    setWinningLine(null);
     setGameCount(prev => prev + 1);
     setCurrentPlayer(gameCount % 2 === 0 ? 'X' : 'O');
     setErrorMessage(null);
@@ -178,6 +188,8 @@ export default function TicTacToe() {
       if (checkWinner(newBoard, row, col, currentPlayer!, currentWinStreakRef.current, currentGridSizeRef.current)) {
         console.log('[Game] Winner found in single player:', currentPlayer);
         setWinner(currentPlayer);
+        const line = getWinningLine(newBoard, row, col, currentPlayer!, currentWinStreakRef.current, currentGridSizeRef.current);
+        setWinningLine(line);
       } else if (newBoard.flat().every(cell => cell !== null)) {
         console.log('[Game] Expanding grid in single player');
         // Expand grid and center old content
@@ -197,6 +209,7 @@ export default function TicTacToe() {
         setWinStreak(newWinStreak);
         currentWinStreakRef.current = newWinStreak;
         setBoard(expandedBoard);
+        setWinningLine(null);
       } else {
         setCurrentPlayer(currentPlayer === 'X' ? 'O' : 'X');
       }
@@ -223,6 +236,7 @@ export default function TicTacToe() {
     setWinStreak(calculateWinStreak(3));
     setBoard(generateEmptyGrid(3));
     setWinner(null);
+    setWinningLine(null);
     setGameCount(prev => prev + 1);
     setCurrentPlayer(gameCount % 2 === 0 ? 'X' : 'O');
     if (isMultiplayer) {
@@ -277,6 +291,7 @@ export default function TicTacToe() {
         isMyTurn={isMyTurn()}
         isWaiting={isWaiting}
         errorMessage={errorMessage}
+        playerSymbol={gameSocket.getGameState().playerSymbol}
       />
 
       <GameControls
@@ -287,6 +302,7 @@ export default function TicTacToe() {
         board={board}
         gridSize={gridSize}
         winner={winner}
+        winningLine={winningLine}
         isBotThinking={isBotThinking}
         isMultiplayer={isMultiplayer}
         isMyTurn={isMyTurn()}

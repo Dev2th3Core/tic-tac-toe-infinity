@@ -5,6 +5,7 @@ interface GameBoardProps {
   board: Player[][];
   gridSize: number;
   winner: Player | 'Draw' | null;
+  winningLine: [number, number][] | null;
   isBotThinking: boolean;
   isMultiplayer: boolean;
   isMyTurn: boolean;
@@ -15,6 +16,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   board,
   gridSize,
   winner,
+  winningLine,
   isBotThinking,
   isMultiplayer,
   isMyTurn,
@@ -32,6 +34,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     return 'text-2xl'; // Default size for smaller grids
   };
 
+  // Check if a cell is part of the winning line
+  const isWinningCell = (row: number, col: number) => {
+    return winningLine?.some(([r, c]) => r === row && c === col) ?? false;
+  };
+
   return (
     <div
       className="grid gap-1 bg-gray-100 dark:bg-gray-700 p-2 rounded-xl max-w-[400px] max-h-[400px] w-full"
@@ -44,7 +51,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           <button
             key={`${rowIndex}-${colIndex}`}
             onClick={() => onCellClick(rowIndex, colIndex)}
-            className={`aspect-square w-full h-full flex items-center justify-center font-bold border-2 rounded-xl transition-colors duration-200
+            className={`aspect-square w-full h-full flex items-center justify-center font-bold border-2 rounded-xl transition-all duration-500
               ${getTextSize()}
               ${
                 cell
@@ -63,7 +70,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                   ? 'cursor-not-allowed'
                   : 'cursor-pointer'
               }
-              bg-white dark:bg-gray-800
+              ${
+                isWinningCell(rowIndex, colIndex)
+                  ? 'winning-cell bg-green-100 dark:bg-green-900 border-green-500 dark:border-green-400'
+                  : 'bg-white dark:bg-gray-800'
+              }
             `}
             disabled={isBotThinking || (isMultiplayer && !isMyTurn)}
           >
