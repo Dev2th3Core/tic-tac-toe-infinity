@@ -1,40 +1,138 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
+# Tic-Tac-Toe Infinity
 
-## Getting Started
+Welcome to **Tic-Tac-Toe Infinity**! 🎉
 
-First, run the development server:
+Are you ready to experience Tic-Tac-Toe like never before? Unlike the classic game where a draw is common, Tic-Tac-Toe Infinity introduces a unique twist: **there are no draws!** The grid expands infinitely, ensuring the game continues until there is a winner. This means every match is exciting, strategic, and full of surprises.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Whether you're playing against friends or challenging our smart bots, you'll find endless fun and new strategies to explore. Give it a try and see how long you can outsmart your opponent in this ever-expanding battlefield!
+
+**Live Demo:**  
+The project is currently hosted on Render:  
+👉 [tic-tac-toe-infinity](https://tic-tac-toe-infinity.onrender.com/)
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
+- [Deployment](#deployment)
+- [License](#license)
+
+---
+
+## 🎮 Features
+
+- Play Tic-Tac-Toe against friends or AI bots
+- Real-time multiplayer support (via sockets)
+- Responsive, modern UI with Tailwind CSS
+- Extensible architecture for adding new features or bots
+
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend:** React, Next.js (App Router & Pages Router)
+- **Styling:** Tailwind CSS, PostCSS
+- **Backend/API:** Next.js API routes, WebSockets
+- **Other:** TypeScript, Render (deployment)
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js (v16+ recommended)
+- npm, yarn, pnpm, or bun (choose one)
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/your-username/tic-tac-toe-infinity.git
+   cd tic-tac-toe-infinity
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   # or
+   yarn install
+   # or
+   pnpm install
+   # or
+   bun install
+   ```
+
+3. **Run the development server:**
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   # or
+   pnpm dev
+   # or
+   bun dev
+   ```
+
+4. **Open your browser:**
+   Visit [http://localhost:3000](http://localhost:3000) to view the app.
+
+---
+
+## 🗂️ Project Structure
+
+```
+tic-tac-toe-infinity/
+├── app/                # Main application (App Router, layouts, components)
+│   ├── components/     # UI and game components
+│   ├── lib/            # Client-side libraries/utilities
+│   ├── layout.tsx      # App-wide layout
+│   └── page.tsx        # Main entry page
+├── pages/              # API routes (Next.js)
+│   └── api/            # Backend endpoints (game logic, sockets, etc.)
+├── public/             # Static assets (icons, images)
+├── styles/             # Global styles (Tailwind, CSS)
+├── lib/                # Shared libraries (e.g., socket logic)
+├── README.md
+├── package.json
+└── ... (config files)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+## 🤝 Contributing
 
-[API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+We welcome contributions from the community! To get started:
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) instead of React pages.
+1. **Fork the repository** and create your branch from `main` or the relevant feature branch.
+2. **Make your changes** (add features, fix bugs, improve docs, etc.).
+3. **Test your changes** locally.
+4. **Submit a pull request** with a clear description of your changes.
 
-This project uses [`next/font`](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**Guidelines:**
+- Follow the existing code style and structure.
+- Write clear, concise commit messages.
+- For major changes, please open an issue first to discuss what you would like to change.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 🌐 Deployment
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn-pages-router) - an interactive Next.js tutorial.
+The project is currently deployed on [Render](https://render.com/) web services as we are using socket connections which requires nodejs environment.  
+You can view the live app here:  
+👉 [https://tic-tac-toe-infinity.onrender.com/](https://tic-tac-toe-infinity.onrender.com/)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 📄 License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
+---
+
+**Enjoy playing and contributing to Tic-Tac-Toe Infinity!**
