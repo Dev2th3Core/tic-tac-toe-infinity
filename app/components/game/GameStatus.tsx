@@ -176,7 +176,7 @@ export const GameStatus: React.FC<GameStatusProps> = ({
           </div>
         </div>
       </div>
-      {isWaiting && (
+      {isMultiplayer && isWaiting && (
         <div className="mb-4 p-2 bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-100 rounded-md">
           Waiting for opponent...
         </div>

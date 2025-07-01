@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { FaGithub, FaLinkedin } from 'react-icons/fa';
-import PortfolioImage from '../assests/Rakshit_Icon.png';
+import PortfolioImage from '../assets/Rakshit_Icon.png';
 
 const Footer = () => {
   return (
