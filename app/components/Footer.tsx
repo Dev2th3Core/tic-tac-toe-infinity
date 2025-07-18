@@ -18,7 +18,7 @@ const Footer = () => {
             <Image src={PortfolioImage} alt="Portfolio" width={35} height={35} />
           </Link>
           <Link 
-            href="https://github.com/Rakshit4045" 
+            href="https://github.com/Dev2th3Core" 
             className="hover:text-blue-600 transition-colors"
             target="_blank"
             rel="noopener noreferrer"
